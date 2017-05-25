@@ -8,6 +8,8 @@ import (
 	"strings"
 	"time"
 
+	"google.golang.org/grpc/grpclog"
+
 	"github.com/golang/protobuf/ptypes"
 	"github.com/golang/protobuf/ptypes/timestamp"
 	"gopkg.in/oleiade/reflections.v1"
@@ -72,34 +74,36 @@ func (m *Mapper) SetSource(columns []ora.Column) error {
 	return nil
 }
 
-func (m *Mapper) MapStruct(row []interface{}, target interface{}) (interface{}, error) {
+func (m *Mapper) MapStruct(row []interface{}, target interface{}) error {
 
 	// For each item we have in the row, look it up in the source map.
 
 	err := m.SetTarget(target)
 	if err != nil {
-		return nil, errors.New(err.Error())
+		return errors.New(err.Error())
 	}
 
 	for k, v := range m.SourceMap {
 		// Need to see if we have a map in the tags map.  If we do, use that.
 		// If we do not, then need to see if we have a map in the target map.  If we do, use that.
 		// If we do not have a map anywhere, then we do not do anything.
+		// grpclog.Println("Working on", k)
 		targetField, err := m.GetTargetField(k)
 		if err != nil {
-			// Log something?
+			grpclog.Println(err)
 			continue
 		}
 		r, err := ValueToType(row[v], targetField.Type.Name())
 		if err != nil {
-			// Log something?
+			grpclog.Println(err)
 			continue
 		}
-		err = reflections.SetField(target, targetField.Type.Name(), r)
+		// fmt.Printf("%v\n%v\n%v\n", target, targetField.Name, r)
+		err = reflections.SetField(target, targetField.Name, r)
 
 	}
 
-	return nil, nil
+	return nil
 }
 
 func (m Mapper) GetTargetField(key string) (result reflect.StructField, err error) {
@@ -110,10 +114,13 @@ func (m Mapper) GetTargetField(key string) (result reflect.StructField, err erro
 
 	if innerResult, ok := m.TagMap[key]; ok {
 		result = m.TargetMap[innerResult]
+		// grpclog.Println("Found a tag match for", key, "and it is", innerResult)
+		// grpclog.Println("\t\twhich is ", result.Name)
 		return
 	}
 
 	if result, ok = m.TargetMap[key]; ok {
+		// grpclog.Println("Found a name match for", key, "and it is", result.Name)
 		return
 	}
 
@@ -161,11 +168,11 @@ func ValueToType(value interface{}, outputType string) (result interface{}, err 
 	case "string":
 		result, err = RowValueToString(value)
 		return result, err
-	case "*timestamp.Timestamp":
+	case "*time.Timestamp":
 		result, err = RowValueToTimestamp(value)
 		return result, err
 	}
-	fmt.Printf("outputType is %s\n", outputType)
+	// fmt.Printf("outputType is %s\n", outputType)
 	err = ErrWhatIsThis("ValueToType", value)
 	return
 }
