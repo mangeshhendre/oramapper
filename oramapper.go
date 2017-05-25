@@ -23,6 +23,7 @@ type Mapper struct {
 	TargetMap    map[string]reflect.StructField
 	TargetStruct *interface{}
 	LastTarget   string
+	debug        bool
 }
 
 // New is the initialization for the methods.
@@ -31,8 +32,13 @@ func New() (*Mapper, error) {
 		SourceMap: make(map[string]int),
 		TagMap:    make(map[string]string),
 		TargetMap: make(map[string]reflect.StructField),
+		debug:     false,
 	}
 	return &mapper, nil
+}
+
+func (m *Mapper) Debug(flag bool) {
+	m.debug = flag
 }
 
 func (m *Mapper) SetTarget(target interface{}) error {
@@ -50,6 +56,9 @@ func (m *Mapper) SetTarget(target interface{}) error {
 	targetType := targetValue.Type()
 
 	if m.LastTarget == targetType.Name() {
+		if m.debug {
+			grpclog.Printf("Not mapping target, already known")
+		}
 		return nil
 	}
 
@@ -87,15 +96,19 @@ func (m *Mapper) MapStruct(row []interface{}, target interface{}) error {
 		// Need to see if we have a map in the tags map.  If we do, use that.
 		// If we do not, then need to see if we have a map in the target map.  If we do, use that.
 		// If we do not have a map anywhere, then we do not do anything.
-		// grpclog.Println("Working on", k)
 		targetField, err := m.GetTargetField(k)
 		if err != nil {
-			grpclog.Println(err)
+			if m.debug {
+				grpclog.Printf("Error processing %s, no target field matches: %s", k, err)
+			}
 			continue
 		}
-		r, err := ValueToType(row[v], targetField.Type.Name())
+
+		r, err := ValueToType(row[v], targetField.Type.String())
 		if err != nil {
-			grpclog.Println(err)
+			if m.debug {
+				grpclog.Printf("Unable to process %s mapped from %s: %s", k, targetField.Name, err)
+			}
 			continue
 		}
 		// fmt.Printf("%v\n%v\n%v\n", target, targetField.Name, r)
@@ -114,13 +127,17 @@ func (m Mapper) GetTargetField(key string) (result reflect.StructField, err erro
 
 	if innerResult, ok := m.TagMap[key]; ok {
 		result = m.TargetMap[innerResult]
-		// grpclog.Println("Found a tag match for", key, "and it is", innerResult)
-		// grpclog.Println("\t\twhich is ", result.Name)
+		if m.debug {
+			grpclog.Println("Found a tag match for", key, "and it is", innerResult)
+			grpclog.Println("\t\twhich is ", result.Name)
+		}
 		return
 	}
 
 	if result, ok = m.TargetMap[key]; ok {
-		// grpclog.Println("Found a name match for", key, "and it is", result.Name)
+		if m.debug {
+			grpclog.Println("Found a name match for", key, "and it is", result.Name)
+		}
 		return
 	}
 
@@ -168,7 +185,7 @@ func ValueToType(value interface{}, outputType string) (result interface{}, err 
 	case "string":
 		result, err = RowValueToString(value)
 		return result, err
-	case "*time.Timestamp":
+	case "*timestamp.Timestamp":
 		result, err = RowValueToTimestamp(value)
 		return result, err
 	}
