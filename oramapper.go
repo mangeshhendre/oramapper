@@ -198,7 +198,7 @@ func ValueToType(value interface{}, outputType string) (result interface{}, err 
 func RowValueToTimestamp(value interface{}) (result *timestamp.Timestamp, err error) {
 	result, err = ptypes.TimestampProto(value.(time.Time))
 	if err != nil {
-		err = ErrWhatIsThis("RowValueToInt32", value)
+		err = ErrWhatIsThis("RowValueToTimeStamp", value)
 		return
 	}
 	return
@@ -220,7 +220,7 @@ func RowValueToInt64(value interface{}) (result int64, err error) {
 
 	// No joy
 	result = 0
-	err = ErrWhatIsThis("RowValueToInt32", value)
+	err = ErrWhatIsThis("RowValueToInt64", value)
 	return
 
 }
