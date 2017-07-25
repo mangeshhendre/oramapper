@@ -24,6 +24,7 @@ type Mapper struct {
 	TargetStruct *interface{}
 	LastTarget   string
 	debug        bool
+	session      *ora.Ses
 }
 
 // New is the initialization for the methods.
@@ -35,6 +36,60 @@ func New() (*Mapper, error) {
 		debug:     false,
 	}
 	return &mapper, nil
+}
+
+// Updates the session.
+func (m *Mapper) SetSession(session *ora.Ses) {
+	m.session = session
+}
+
+// Executes a simple select query with stuff
+func (m *Mapper) Select(query string, target interface{}, params ...interface{}) (interface{}, error) {
+
+	if m.debug {
+		grpclog.Info("Running Select")
+	}
+
+	if m.session == nil {
+		return nil, fmt.Errorf("no established session")
+	}
+
+	prepStatement, err := m.session.Prep(query)
+	if err != nil {
+		return nil, err
+	}
+
+	concreteVariable := reflect.TypeOf(target)
+
+	foo := []concreteVariable
+
+	if m.debug {
+		grpclog.Info("Prepared Query")
+	}
+
+	defer prepStatement.Close()
+
+	resultSet, err := prepStatement.Qry(params)
+	if err != nil {
+		grpclog.Infof("Error running query: %v", err)
+		return nil, err
+	}
+
+	if resultSet.IsOpen() {
+		for resultSet.Next() {
+			err := m.SetSource(resultSet.Columns)
+			if err != nil {
+				return nil, err
+			}
+			err = m.MapStruct(resultSet.Row, target)
+			if err != nil {
+				continue
+				// return nil, err
+			}
+		}
+
+	}
+
 }
 
 func (m *Mapper) Debug(flag bool) {
