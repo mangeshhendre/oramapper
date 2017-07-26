@@ -59,9 +59,9 @@ func (m *Mapper) Select(query string, target interface{}, params ...interface{})
 		return nil, err
 	}
 
-	concreteVariable := reflect.TypeOf(target)
+	concreteVariableType := reflect.TypeOf(target)
 
-	foo := []concreteVariable
+	slice := reflect.MakeSlice(reflect.SliceOf(concreteVariableType), 0, 0)
 
 	if m.debug {
 		grpclog.Info("Prepared Query")
@@ -86,6 +86,7 @@ func (m *Mapper) Select(query string, target interface{}, params ...interface{})
 				continue
 				// return nil, err
 			}
+			slice := reflect.AppendSlice(slice, reflect.ValueOf(target))
 		}
 
 	}
