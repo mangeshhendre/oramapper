@@ -69,7 +69,7 @@ func (m *Mapper) Select(query string, target interface{}, params ...interface{})
 
 	defer prepStatement.Close()
 
-	resultSet, err := prepStatement.Qry(params)
+	resultSet, err := prepStatement.Qry(params[0])
 	if err != nil {
 		grpclog.Infof("Error running query: %v", err)
 		return nil, err
@@ -86,11 +86,11 @@ func (m *Mapper) Select(query string, target interface{}, params ...interface{})
 				continue
 				// return nil, err
 			}
-			slice := reflect.AppendSlice(slice, reflect.ValueOf(target))
+			slice = reflect.AppendSlice(slice, reflect.ValueOf(target))
 		}
-
+		return slice, nil
 	}
-
+	return nil, err
 }
 
 func (m *Mapper) Debug(flag bool) {
