@@ -44,7 +44,7 @@ func (m *Mapper) SetSession(session *ora.Ses) {
 }
 
 // Executes a simple select query with stuff
-func (m *Mapper) Select(query string, target interface{}, params ...interface{}) ([]interface{}, error) {
+func (m *Mapper) Select(query string, target interface{}, params ...interface{}) (interface{}, error) {
 
 	if m.debug {
 		grpclog.Info("Running Select")
@@ -94,11 +94,12 @@ func (m *Mapper) Select(query string, target interface{}, params ...interface{})
 		}
 
 		//I hate to do this....there should be better way by returning slice
-		ret := make([]interface{}, slice.Len())
-		for i := 0; i < slice.Len(); i++ {
-			ret[i] = slice.Index(i).Interface()
-		}
-		return ret, nil
+		// ret := make([]interface{}, slice.Len())
+		// for i := 0; i < slice.Len(); i++ {
+		// 	ret[i] = slice.Index(i).Interface()
+		// }
+		// return ret, nil
+		return slice.Interface(), nil
 	}
 	return nil, err
 }
