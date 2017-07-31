@@ -44,7 +44,7 @@ func (m *Mapper) SetSession(session *ora.Ses) {
 }
 
 // Executes a simple select query with stuff
-func (m *Mapper) Select(query string, target interface{}, params ...interface{}) (interface{}, error) {
+func (m *Mapper) Select(query string, target interface{}, params ...interface{}) ([]interface{}, error) {
 
 	if m.debug {
 		grpclog.Info("Running Select")
@@ -59,9 +59,13 @@ func (m *Mapper) Select(query string, target interface{}, params ...interface{})
 		return nil, err
 	}
 
-	concreteVariableType := reflect.TypeOf(target)
+	// concreteVariableType := reflect.TypeOf(target)
+	targetType := reflect.TypeOf(target)
+	//targetValue := reflect.ValueOf(target).Elem()
 
-	slice := reflect.MakeSlice(reflect.SliceOf(concreteVariableType), 0, 0)
+	fmt.Printf("%v\n", targetType.Name)
+
+	slice := reflect.MakeSlice(reflect.SliceOf(targetType), 0, 0)
 
 	if m.debug {
 		grpclog.Info("Prepared Query")
@@ -81,14 +85,20 @@ func (m *Mapper) Select(query string, target interface{}, params ...interface{})
 			if err != nil {
 				return nil, err
 			}
-			err = m.MapStruct(resultSet.Row, target)
+			target, err = m.MapStruct(resultSet.Row, target)
 			if err != nil {
 				continue
 				// return nil, err
 			}
-			slice = reflect.AppendSlice(slice, reflect.ValueOf(target))
+			slice = reflect.Append(slice, reflect.ValueOf(target).Elem())
 		}
-		return slice, nil
+
+		//I hate to do this....there should be better way by returning slice
+		ret := make([]interface{}, slice.Len())
+		for i := 0; i < slice.Len(); i++ {
+			ret[i] = slice.Index(i).Interface()
+		}
+		return ret, nil
 	}
 	return nil, err
 }
@@ -139,13 +149,13 @@ func (m *Mapper) SetSource(columns []ora.Column) error {
 	return nil
 }
 
-func (m *Mapper) MapStruct(row []interface{}, target interface{}) error {
+func (m *Mapper) MapStruct(row []interface{}, target interface{}) (result interface{}, err error) {
 
 	// For each item we have in the row, look it up in the source map.
 
-	err := m.SetTarget(target)
+	err = m.SetTarget(target)
 	if err != nil {
-		return errors.New(err.Error())
+		return nil, errors.New(err.Error())
 	}
 
 	for k, v := range m.SourceMap {
@@ -167,12 +177,24 @@ func (m *Mapper) MapStruct(row []interface{}, target interface{}) error {
 			}
 			continue
 		}
-		// fmt.Printf("%v\n%v\n%v\n", target, targetField.Name, r)
+		fmt.Printf("%v\n%v\n%v\n", target, targetField.Name, r)
+		reflectedType := reflect.TypeOf(target).Kind()
+		fmt.Printf("%v\n", reflectedType)
+		if reflect.TypeOf(target).Kind() != reflect.Ptr {
+			targetPtr := to_struct_ptr(target)
+			target = targetPtr
+		}
 		err = reflections.SetField(target, targetField.Name, r)
-
 	}
 
-	return nil
+	return target, nil
+}
+
+func to_struct_ptr(obj interface{}) interface{} {
+	val := reflect.ValueOf(obj)
+	vp := reflect.New(val.Type())
+	vp.Elem().Set(val)
+	return vp.Interface()
 }
 
 func (m Mapper) GetTargetField(key string) (result reflect.StructField, err error) {
