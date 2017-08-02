@@ -59,11 +59,7 @@ func (m *Mapper) Select(query string, target interface{}, params ...interface{})
 		return nil, err
 	}
 
-	// concreteVariableType := reflect.TypeOf(target)
 	targetType := reflect.TypeOf(target)
-	//targetValue := reflect.ValueOf(target).Elem()
-
-	fmt.Printf("%v\n", targetType.Name)
 
 	slice := reflect.MakeSlice(reflect.SliceOf(targetType), 0, 0)
 
