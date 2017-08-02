@@ -92,13 +92,6 @@ func (m *Mapper) Select(query string, target interface{}, params ...interface{})
 			}
 			slice = reflect.Append(slice, reflect.ValueOf(target).Elem())
 		}
-
-		//I hate to do this....there should be better way by returning slice
-		// ret := make([]interface{}, slice.Len())
-		// for i := 0; i < slice.Len(); i++ {
-		// 	ret[i] = slice.Index(i).Interface()
-		// }
-		// return ret, nil
 		return slice.Interface(), nil
 	}
 	return nil, err
@@ -178,12 +171,9 @@ func (m *Mapper) MapStruct(row []interface{}, target interface{}) (result interf
 			}
 			continue
 		}
-		fmt.Printf("%v\n%v\n%v\n", target, targetField.Name, r)
-		reflectedType := reflect.TypeOf(target).Kind()
-		fmt.Printf("%v\n", reflectedType)
+
 		if reflect.TypeOf(target).Kind() != reflect.Ptr {
-			targetPtr := to_struct_ptr(target)
-			target = targetPtr
+			target = to_struct_ptr(target)
 		}
 		err = reflections.SetField(target, targetField.Name, r)
 	}
