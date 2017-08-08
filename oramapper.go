@@ -119,12 +119,15 @@ func (m *Mapper) SetTarget(target interface{}) error {
 	}
 
 	m.LastTarget = targetType.Name()
-
 	targetFieldCount := targetType.NumField()
 
 	for i := 0; i < targetFieldCount; i++ {
 		field := targetType.Field(i)
-		m.TargetMap[strings.ToLower(field.Name)] = field
+		fieldName := field.Name
+		if mapper, ok := field.Tag.Lookup("dbmapper"); ok {
+			m.TagMap[strings.ToLower(mapper)] = strings.ToLower(fieldName)
+		}
+		m.TargetMap[strings.ToLower(fieldName)] = field
 	}
 
 	return nil
