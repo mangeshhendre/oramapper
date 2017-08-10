@@ -180,13 +180,6 @@ func (m *Mapper) MapStruct(row []interface{}, target interface{}) (result interf
 	return target, nil
 }
 
-func to_struct_ptr(obj interface{}) interface{} {
-	val := reflect.ValueOf(obj)
-	vp := reflect.New(val.Type())
-	vp.Elem().Set(val)
-	return vp.Interface()
-}
-
 func (m Mapper) GetTargetField(key string) (result reflect.StructField, err error) {
 	// First find in the tags.
 	// If found, return that.
@@ -211,6 +204,13 @@ func (m Mapper) GetTargetField(key string) (result reflect.StructField, err erro
 
 	return reflect.StructField{}, errors.New("unable to map struct field")
 
+}
+
+func to_struct_ptr(obj interface{}) interface{} {
+	val := reflect.ValueOf(obj)
+	vp := reflect.New(val.Type())
+	vp.Elem().Set(val)
+	return vp.Interface()
 }
 
 func reflectValue(target interface{}) reflect.Value {
