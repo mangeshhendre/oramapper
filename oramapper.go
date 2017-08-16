@@ -23,6 +23,7 @@ type Mapper struct {
 	TargetMap    map[string]reflect.StructField
 	TargetStruct *interface{}
 	LastTarget   string
+	MapString    string
 	debug        bool
 	session      *ora.Ses
 }
@@ -33,17 +34,18 @@ func New() (*Mapper, error) {
 		SourceMap: make(map[string]int),
 		TagMap:    make(map[string]string),
 		TargetMap: make(map[string]reflect.StructField),
+		MapString: "db_mapper",
 		debug:     false,
 	}
 	return &mapper, nil
 }
 
-// Updates the session.
+// SetSession Updates the session.
 func (m *Mapper) SetSession(session *ora.Ses) {
 	m.session = session
 }
 
-// Executes a simple select query with stuff
+// Select Executes a simple select query with stuff
 func (m *Mapper) Select(query string, target interface{}, params ...interface{}) (interface{}, error) {
 
 	if m.debug {
@@ -93,10 +95,12 @@ func (m *Mapper) Select(query string, target interface{}, params ...interface{})
 	return nil, err
 }
 
+//Debug flag set
 func (m *Mapper) Debug(flag bool) {
 	m.debug = flag
 }
 
+// SetTarget set target map
 func (m *Mapper) SetTarget(target interface{}) error {
 	// Third is to extract the fields and structfields
 	// Fourth is to set the fieldmap.
@@ -124,7 +128,7 @@ func (m *Mapper) SetTarget(target interface{}) error {
 	for i := 0; i < targetFieldCount; i++ {
 		field := targetType.Field(i)
 		fieldName := field.Name
-		if mapper, ok := field.Tag.Lookup("dbmapper"); ok {
+		if mapper, ok := field.Tag.Lookup(m.MapString); ok {
 			m.TagMap[strings.ToLower(mapper)] = strings.ToLower(fieldName)
 		}
 		m.TargetMap[strings.ToLower(fieldName)] = field
@@ -133,7 +137,7 @@ func (m *Mapper) SetTarget(target interface{}) error {
 	return nil
 }
 
-// Setup your source.  Run immediately after you know the result set is open.
+// SetSource Setup your source.  Run immediately after you know the result set is open.
 func (m *Mapper) SetSource(columns []ora.Column) error {
 	for k, v := range columns {
 		m.SourceMap[strings.ToLower(v.Name)] = k
@@ -142,6 +146,7 @@ func (m *Mapper) SetSource(columns []ora.Column) error {
 	return nil
 }
 
+// MapStruct kill the warning
 func (m *Mapper) MapStruct(row []interface{}, target interface{}) (result interface{}, err error) {
 
 	// For each item we have in the row, look it up in the source map.
@@ -172,7 +177,7 @@ func (m *Mapper) MapStruct(row []interface{}, target interface{}) (result interf
 		}
 
 		if reflect.TypeOf(target).Kind() != reflect.Ptr {
-			target = to_struct_ptr(target)
+			target = toStructPtr(target)
 		}
 		err = reflections.SetField(target, targetField.Name, r)
 	}
@@ -180,6 +185,7 @@ func (m *Mapper) MapStruct(row []interface{}, target interface{}) (result interf
 	return target, nil
 }
 
+//GetTargetField get target field
 func (m Mapper) GetTargetField(key string) (result reflect.StructField, err error) {
 	// First find in the tags.
 	// If found, return that.
@@ -206,7 +212,7 @@ func (m Mapper) GetTargetField(key string) (result reflect.StructField, err erro
 
 }
 
-func to_struct_ptr(obj interface{}) interface{} {
+func toStructPtr(obj interface{}) interface{} {
 	val := reflect.ValueOf(obj)
 	vp := reflect.New(val.Type())
 	vp.Elem().Set(val)
@@ -236,6 +242,7 @@ func validTypes() []reflect.Kind {
 	return []reflect.Kind{reflect.Struct, reflect.Ptr}
 }
 
+// ValueToType convert the value to its type
 func ValueToType(value interface{}, outputType string) (result interface{}, err error) {
 
 	if value == nil {
