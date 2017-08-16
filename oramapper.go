@@ -69,7 +69,7 @@ func (m *Mapper) Select(query string, target interface{}, params ...interface{})
 
 	defer prepStatement.Close()
 
-	resultSet, err := prepStatement.Qry(params[0])
+	resultSet, err := prepStatement.Qry(params...)
 	if err != nil {
 		grpclog.Infof("Error running query: %v", err)
 		return nil, err
